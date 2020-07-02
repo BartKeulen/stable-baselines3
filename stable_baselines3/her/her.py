@@ -9,7 +9,7 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.save_util import (load_from_zip_file)
 from stable_baselines3.common.type_aliases import GymEnv
 
-from .replay_buffer import HindsightExperienceReplayBuffer
+from .replay_buffer import HindsightExperienceReplayBuffer, GoalSelectionStrategy
 from .utils import HERGoalEnvWrapper
 
 
@@ -31,7 +31,7 @@ def create_her(model_class: Union[Type[SAC], Type[TD3], Type[OffPolicyAlgorithm]
         def __init__(self, policy: Type[BasePolicy],
                      env: Union[GymEnv, str],
                      n_sampled_goal: int = 4,
-                     goal_selection_strategy: str = 'future',
+                     goal_selection_strategy: Union[str, GoalSelectionStrategy] = 'future',
                      add_her_while_sampling: bool = True,
                      learning_rate: Union[float, Callable] = None,
                      **kwargs):
@@ -55,11 +55,16 @@ def create_her(model_class: Union[Type[SAC], Type[TD3], Type[OffPolicyAlgorithm]
 
             super(HER, self).__init__(policy, self.her_wrapped_env, learning_rate, **model_init_dict)
 
-            self.replay_buffer = HindsightExperienceReplayBuffer(self.buffer_size, self.observation_space,
-                                                                 self.action_space, self.max_episode_steps,
-                                                                 self.her_wrapped_env, self.device, 1,
-                                                                 self.add_her_while_sampling,
-                                                                 self.goal_selection_strategy, self.n_sampled_goal)
+            self.replay_buffer = HindsightExperienceReplayBuffer(
+                buffer_size=self.buffer_size, 
+                observation_space=self.observation_space,
+                action_space=self.action_space,
+                wrapped_env=self.her_wrapped_env, 
+                n_sampled_goal=self.n_sampled_goal,
+                goal_selection_strategy=self.goal_selection_strategy, 
+                device=self.device, 
+                n_envs=1
+            )
 
             self.her_obs_space = self.observation_space
             self.her_action_space = self.action_space
@@ -71,7 +76,6 @@ def create_her(model_class: Union[Type[SAC], Type[TD3], Type[OffPolicyAlgorithm]
             """
 
             env = gym.make(env) if isinstance(env, str) else env
-            self.max_episode_steps = env._max_episode_steps
 
             if not isinstance(env, HERGoalEnvWrapper):
                 env = HERGoalEnvWrapper(env)

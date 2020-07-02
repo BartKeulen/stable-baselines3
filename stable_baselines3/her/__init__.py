@@ -1,1 +1,2 @@
 from stable_baselines3.her.her import create_her
+from stable_baselines3.her.replay_buffer import GoalSelectionStrategy
